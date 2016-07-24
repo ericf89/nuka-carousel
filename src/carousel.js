@@ -460,12 +460,14 @@ const Carousel = React.createClass({
   /**
    * wrappedAnimation returns a function used to animate a carousel animation
    * that wraps start <-> end;
-   * @param  {int} index     The index the user is trying to slide to. (< 0 || > children.length)
-   * @param  {int} nextSlide The actual slide the user is moving to. (Should be within the children[])
-   * @return {func} animationFunc The function to be passed to the setState call that sets the new slide index
+   * @param  {int}  currentSlide   The slide the carousel is currently on. afterSlide hook only fires if this != nextSlide.
+   * @param  {int}  index          The index the user is trying to slide to. (< 0 || > children.length)
+   * @param  {int}  nextSlide      The actual slide the user is moving to. (Should be within the children[])
+   * @return {func} animationFunc  The function to be passed to the setState call that sets the new slide index
    */
-  wrappedAnimation(index, nextSlide) {
+  wrappedAnimation(currentSlide, index, nextSlide) {
     return () => {
+      if(currentSlide === nextSlide) return;
       this.animateSlide(null, null, this.getTargetLeft(null, index), () => {
         this.animateSlide(null, 0.01);
         this.props.afterSlide(nextSlide);
@@ -476,11 +478,13 @@ const Carousel = React.createClass({
   },
   /**
    * A simpler animationFunc for normal transitions that don't wrap.
-   * @param  {int} nextSlide The slide the user is moving to.
-   * @return {func} animationFunc The function to be passed to the setState call that sets the new slide index
+   * @param  {int}  currentSlide   The slide the carousel is currently on. afterSlide hook only fires if this != nextSlide.
+   * @param  {int}  nextSlide      The slide the user is moving to.
+   * @return {func} animationFunc  The function to be passed to the setState call that sets the new slide index
    */
-  basicAnimation(nextSlide) {
+  basicAnimation(currentSlide, nextSlide) {
     return () => {
+      if(currentSlide === nextSlide) return;
       this.animateSlide();
       this.props.afterSlide(nextSlide);
       this.resetAutoplay();
@@ -491,8 +495,8 @@ const Carousel = React.createClass({
    * Returns the index of the nextSlide, as well as the animationFunc that should
    * be used to move there. Uses the attempted index and the current
    * state/props.
-   * @param  {int} index The index the user is trying to move to.
-   * @return {[int, func]} The actual slide index to move to, and the animation func to get there.
+   * @param  {int}          index  The index the user is trying to move to.
+   * @return {[int, func]}         The actual slide index to move to, and the animation func to get there.
    */
   getNextSlideAndAndimationFunc(index) {
     // Get the data we need out of props, and state.
@@ -521,18 +525,18 @@ const Carousel = React.createClass({
 
     // If we're trying to move out of bounds, but don't have wrap enabled, just return the currentSlide.
     if (outOfBounds && !wrapAround) {
-      return [currentSlide, basicAnimation(nextSlide)];
+      return [currentSlide, basicAnimation(currentSlide)];
     }
 
     // If we always allowBackSliding, and we're moving back, we should be good to continue.
     // Otherwise we need to make sure the beforeSlide check is ok.
     if ((alwaysAllowBackSlide && movingBack) || beforeHookCheck) {
       // Different animation funcs depending on where we're going.
-      return [nextSlide, outOfBounds ? wrappedAnimation(index, nextSlide) : basicAnimation(nextSlide)];
+      return [nextSlide, outOfBounds ? wrappedAnimation(currentSlide, index, nextSlide) : basicAnimation(currentSlide, nextSlide)];
     }
 
     // Not currently allowed to slide... Stay put!
-    return [currentSlide, basicAnimation(currentSlide)];
+    return [currentSlide, basicAnimation(currentSlide, currentSlide)];
   },
 
   goToSlide(index) {
